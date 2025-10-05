@@ -30,35 +30,6 @@ builder.Services.AddResponseCompression(options =>
     options.EnableForHttps = true;
 });
 
-// CORS Configuration
-//if (builder.Environment.IsDevelopment())
-//{
-//    builder.Services.AddCors(options =>
-//    {
-//        options.AddPolicy("DevelopmentCORS", policy =>
-//        {
-//            policy.WithOrigins("https://localhost:44447") // Angular dev server
-//                  .AllowAnyMethod()
-//                  .AllowAnyHeader()
-//                  .AllowCredentials();
-//        });
-//    });
-//}
-//else
-//{
-//    builder.Services.AddCors(options =>
-//    {
-//        options.AddPolicy("ProductionCORS", policy =>
-//        {
-//            policy.WithOrigins(builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
-//                  .AllowAnyMethod()
-//                  .AllowAnyHeader()
-//                  .AllowCredentials();
-//        });
-//    });
-//}
-
-// Rate Limiting (Production)
 if (!builder.Environment.IsDevelopment())
 {
     builder.Services.AddRateLimiter(options =>
@@ -86,75 +57,37 @@ if (!builder.Environment.IsDevelopment())
 
 var app = builder.Build();
 
-// ============================================
-// MIDDLEWARE PIPELINE
-// ============================================
-
-// 1. Global Exception Handler (MUST BE FIRST)
+// Exception handler FIRST
 app.UseExceptionHandler(options => { });
 
-// 2. Development-specific middleware
+// Development
 if (app.Environment.IsDevelopment())
 {
-    // Initialize and seed database
     await app.InitialiseDatabaseAsync();
-
-    // CORS for Angular dev server
-    app.UseCors("DevelopmentCORS");
-
-    // Request logging
-    app.Use(async (context, next) =>
-    {
-        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-        logger.LogInformation("→ {Method} {Path}", context.Request.Method, context.Request.Path);
-        await next();
-        logger.LogInformation("← {StatusCode}", context.Response.StatusCode);
-    });
 }
 else
 {
-    // Production security
     app.UseHsts();
-
-    // Production CORS
-    app.UseCors("ProductionCORS");
-
-    // Rate limiting
-    app.UseRateLimiter();
 }
 
-// 3. HTTPS Redirection
+// Middleware
 app.UseHttpsRedirection();
-
-// 4. Response Compression
-app.UseResponseCompression();
-
-// 5. Static Files (Angular build output)
 app.UseStaticFiles();
+app.UseAuthentication();    // ← CRITICAL: Add this
+app.UseAuthorization();     // ← CRITICAL: Add this
 
-// 6. Authentication (CRITICAL - before Authorization)
-app.UseAuthentication();
-
-// 7. Authorization (CRITICAL - after Authentication)
-app.UseAuthorization();
-
-// 8. Swagger/OpenAPI Documentation
 app.UseSwaggerUi(settings =>
 {
     settings.Path = "/api";
     settings.DocumentPath = "/api/specification.json";
 });
 
-// 9. Endpoint Mapping
-app.MapDefaultEndpoints();           // Aspire health checks (/health, /alive)
-app.MapEndpoints();                  // API endpoints (/api/TodoLists, etc.)
-app.MapRazorPages();                 // Identity UI pages (/Identity/Account/...)
-app.MapFallbackToFile("index.html"); // SPA fallback (MUST BE LAST)
+// Endpoints
+app.MapDefaultEndpoints();
+app.MapEndpoints();
+app.MapRazorPages();
+app.MapFallbackToFile("index.html");
 
-// ============================================
-// RUN APPLICATION
-// ============================================
 app.Run();
 
-// Partial class for integration testing
 public partial class Program { }
