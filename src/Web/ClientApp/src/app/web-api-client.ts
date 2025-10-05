@@ -1143,7 +1143,7 @@ export class WeatherForecast implements IWeatherForecast {
     date?: Date;
     temperatureC?: number;
     temperatureF?: number;
-    summary?: string | undefined;
+    summary?: string;
 
     constructor(data?: IWeatherForecast) {
         if (data) {
@@ -1184,7 +1184,7 @@ export interface IWeatherForecast {
     date?: Date;
     temperatureC?: number;
     temperatureF?: number;
-    summary?: string | undefined;
+    summary?: string;
 }
 
 export class SwaggerException extends Error {
